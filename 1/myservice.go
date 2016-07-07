@@ -107,7 +107,7 @@ func acceptConnection(listener net.Listener, listen chan<- net.Conn) {
 }
 
 func handleClient(client net.Conn) {
-	fo
+	for{
 		buf := make([]byte, 4096)
 		numbytes, err := client.Read(buf)
 		if numbytes == 0 || err != nil {
