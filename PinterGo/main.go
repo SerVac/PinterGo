@@ -5,10 +5,13 @@ import (
 	"log"
 	"golang.org/x/oauth2"
 	"fmt"
+	"net/url"
+	"bytes"
 )
 
 const htmlIndex = `<html><body>
 Hello!
+<a href="http://localhost/boards" class="button">Go to boards</a>
 </body></html>
 `
 
@@ -23,16 +26,64 @@ const serverKey = fPath + "server.key"
 	client_id=12345&
 	scope=read_public,write_public&
 	state=768uyFys
-	*/
-const client_id = "your_client_id"
-const client_secret = "your_secret"
+*/
+const client_id = ""
+const client_secret = ""
 const redirect_url = "https://localhost/returnPage"
-//redirect_url:="http://www.test.com"
 
 var (
 	conf *oauth2.Config
+	tok *oauth2.Token
+	client *http.Client
 )
 
+const api_host_url = "https://api.pinterest.com/v1/"
+const api_url_pins = "me/pins/"
+const api_url_boards = "me/boards/"
+
+// boards
+func handleBoards(w http.ResponseWriter, r *http.Request) {
+	u, err := url.Parse(api_host_url + api_url_boards)
+	if err != nil {
+		log.Fatal(err)
+	}
+	q := u.Query()
+	q.Add("access_token", tok.AccessToken)
+	q.Add("fields", "id,name,url")
+	//q.Add("limit", "10")
+	u.RawQuery = q.Encode()
+	fmt.Println(u)
+	fmt.Println("str = " + u.String())
+
+	buf := new(bytes.Buffer)
+	resp, err := client.Get(u.String())
+	if err != nil {
+		log.Println(err)
+	}  else {
+		readFromRespToBuffer(buf, resp)
+		fmt.Println("buf = "+buf.String())
+	}
+
+
+	if (buf != nil) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<html><body>`))
+		w.Write([]byte(buf.String()))
+		//w.Write([]byte(`<a href="http://localhost/boards">Go to Boards</a>`))
+		w.Write([]byte(`</body></html>`))
+	}
+}
+
+func readFromRespToBuffer(bufReader *bytes.Buffer, resp *http.Response) {
+	defer resp.Body.Close()
+	_, err := bufReader.ReadFrom(resp.Body)
+	//_, err := io.Copy(os.Stdout, resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//return bufReader
+}
 
 // /returnPage
 func handleReturn(w http.ResponseWriter, r *http.Request) {
@@ -41,10 +92,54 @@ func handleReturn(w http.ResponseWriter, r *http.Request) {
 	code := r.FormValue("code")
 	fmt.Println("code = ", code)
 
-	//http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
+	var err error
+	tok, err = conf.Exchange(oauth2.NoContext, code)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//api_url+"/me/pins/?"+"access_token=<YOUR-ACCESS-TOKEN>
+	//&fields=id,creator,note
+	//&limit=1
+	u, err := url.Parse(api_host_url + api_url_pins)
+	if err != nil {
+		log.Fatal(err)
+	}
+	q := u.Query()
+	q.Add("access_token", tok.AccessToken)
+	q.Add("fields", "id,creator,note")
+	q.Add("limit", "1")
+	u.RawQuery = q.Encode()
+	fmt.Println(u)
+	fmt.Println("str = " + u.String())
+
+	client := conf.Client(oauth2.NoContext, tok)
+
+
+	buf := new(bytes.Buffer)
+	resp, err := client.Get(u.String())
+	if err != nil {
+		log.Println(err)
+	}  else {
+		readFromRespToBuffer(buf, resp)
+		fmt.Println("buf = "+buf.String())
+		//defer resp.Body.Close()
+		//buf.ReadFrom(resp.Body)
+		//_, err := io.Copy(os.Stdout, resp.Body)
+		/*if err != nil {
+			log.Fatal(err)
+		}*/
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`test`))
+	if (buf != nil) {
+		w.Write([]byte(`<html><body>`))
+		w.Write([]byte(buf.String()))
+		w.Write([]byte(`<a href="https://localhost/boards">Go to Boards</a>`))
+		w.Write([]byte(`</body></html>`))
+	}
+	// http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
 
 }
 
@@ -115,6 +210,7 @@ func main() {
 
 	http.HandleFunc("/", handleMain)
 	http.HandleFunc("/returnPage", handleReturn)
+	http.HandleFunc("/boards", handleBoards)
 
 	err := http.ListenAndServeTLS("localhost:443", serverCrt, serverKey, nil)
 	if err != nil {
