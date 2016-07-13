@@ -113,7 +113,7 @@ func handleReturn(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(u)
 	fmt.Println("str = " + u.String())
 
-	client := conf.Client(oauth2.NoContext, tok)
+	client = conf.Client(oauth2.NoContext, tok)
 
 
 	buf := new(bytes.Buffer)
