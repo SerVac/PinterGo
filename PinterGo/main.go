@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"net/url"
 	"bytes"
+	"encoding/json"
+	"io/ioutil"
+	"os"
 )
 
 const htmlIndex = `<html><body>
@@ -55,23 +58,64 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(u)
 	fmt.Println("str = " + u.String())
 
-	buf := new(bytes.Buffer)
 	resp, err := client.Get(u.String())
 	if err != nil {
 		log.Println(err)
 	}  else {
-		readFromRespToBuffer(buf, resp)
-		fmt.Println("buf = "+buf.String())
-	}
+		//readFromRespToBuffer(buf, resp)
+		//var boards []int
+		responseBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Println(err)
+		}else {
 
+			var f interface{}
+			err := json.Unmarshal(responseBytes, &f)
 
-	if (buf != nil) {
+			if err != nil {
+				log.Println(err)
+			}
+
+			fmt.Println("Parse response JSON")
+			print("f =",f)
+			print("&f =",&f)
+			parseUnknownJSON(f)
+		}
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`<html><body>`))
-		w.Write([]byte(buf.String()))
+		//w.Write([]byte(boards))
+		w.Write(responseBytes)
 		//w.Write([]byte(`<a href="http://localhost/boards">Go to Boards</a>`))
 		w.Write([]byte(`</body></html>`))
+
+	}
+
+}
+
+func parseUnknownJSON(unknownInterface interface{}) {
+
+	unknMap := unknownInterface.(map[string]interface{})
+	for k, v := range unknMap {
+		switch t := v.(type) {
+		case string:
+			fmt.Println(k, "is string", "t = ", t, " v=", v)
+		case int:
+			fmt.Println(k, "is int", "t = " , t, " v=", v)
+		case []interface{}:
+			fmt.Println(k, "is an array:")
+
+			for i, av := range t {
+				fmt.Println("")
+				fmt.Println(i, av)
+				fmt.Println("with addres", i, &av)
+
+				parseUnknownJSON(av)
+			}
+		default:
+			fmt.Println(k, "is of a type I don't know how to handle")
+		}
 	}
 }
 
@@ -115,14 +159,13 @@ func handleReturn(w http.ResponseWriter, r *http.Request) {
 
 	client = conf.Client(oauth2.NoContext, tok)
 
-
 	buf := new(bytes.Buffer)
 	resp, err := client.Get(u.String())
 	if err != nil {
 		log.Println(err)
 	}  else {
 		readFromRespToBuffer(buf, resp)
-		fmt.Println("buf = "+buf.String())
+		fmt.Println("buf = " + buf.String())
 		//defer resp.Body.Close()
 		//buf.ReadFrom(resp.Body)
 		//_, err := io.Copy(os.Stdout, resp.Body)
@@ -215,6 +258,7 @@ func main() {
 	err := http.ListenAndServeTLS("localhost:443", serverCrt, serverKey, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
+		os.Exit(1)
 	}
 
 }
