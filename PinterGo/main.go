@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"reflect"
 )
 
 const htmlIndex = `<html><body>
@@ -44,6 +45,10 @@ const api_host_url = "https://api.pinterest.com/v1/"
 const api_url_pins = "me/pins/"
 const api_url_boards = "me/boards/"
 
+type Boards struct {
+	boardsList []int
+}
+
 // boards
 func handleBoards(w http.ResponseWriter, r *http.Request) {
 	u, err := url.Parse(api_host_url + api_url_boards)
@@ -77,9 +82,12 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 			}
 
 			fmt.Println("Parse response JSON")
-			print("f =",f)
-			print("&f =",&f)
-			parseUnknownJSON(f)
+			print("f =", f)
+			print("&f =", &f)
+			print("*f =", *f)
+
+			boardsStruct := new(Boards)
+			parseUnknownJSON(f, *boardsStruct)
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -94,27 +102,44 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func parseUnknownJSON(unknownInterface interface{}) {
+func parseUnknownJSON(unknownInterface interface{}, structObject *struct{}) {
+	s := reflect.ValueOf(&structObject).Elem()
+	//for i := 0; i < s.NumField(); i++ {
+	//	f := s.Field(i)
+		//fmt.Printf("%d: %s %s = %v\n", i,
+		//	typeOfT.Field(i).Name, f.Type(), f.Interface())
+	//}
 
+	var count = 0
+	var max = s.NumField()
 	unknMap := unknownInterface.(map[string]interface{})
-	for k, v := range unknMap {
-		switch t := v.(type) {
-		case string:
-			fmt.Println(k, "is string", "t = ", t, " v=", v)
-		case int:
-			fmt.Println(k, "is int", "t = " , t, " v=", v)
-		case []interface{}:
-			fmt.Println(k, "is an array:")
+	parseMap(*unknMap, *structObject, count, max)
+}
 
-			for i, av := range t {
-				fmt.Println("")
-				fmt.Println(i, av)
-				fmt.Println("with addres", i, &av)
+func parseMap(unknMap *map[string]interface{}, structObject *struct{}, count int, max int) {
+	if (count <= max) {
+		for k, v := range unknMap {
+			count++
+			switch t := v.(type) {
+			case string:
+				fmt.Println(k, "is string", "t = ", t, " v=", v)
+			case int:
+				fmt.Println(k, "is int", "t = ", t, " v=", v)
+			case []interface{}:
+				fmt.Println(k, "is an array:")
 
-				parseUnknownJSON(av)
+				for i, av := range t {
+					fmt.Println("")
+					fmt.Println(i, av)
+					//fmt.Println("with addres", i, &av)
+
+					parseMap(av, structObject, count, max)
+				}
+			default:
+				fmt.Println(k, "is of a type I don't know how to handle")
 			}
-		default:
-			fmt.Println(k, "is of a type I don't know how to handle")
+
+
 		}
 	}
 }
