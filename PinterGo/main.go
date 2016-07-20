@@ -44,6 +44,16 @@ const api_host_url = "https://api.pinterest.com/v1/"
 const api_url_pins = "me/pins/"
 const api_url_boards = "me/boards/"
 
+type Board struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type BoardsData struct {
+	Data []Board `json:"data"`
+}
+
 // boards
 func handleBoards(w http.ResponseWriter, r *http.Request) {
 	u, err := url.Parse(api_host_url + api_url_boards)
@@ -71,15 +81,23 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 
 			var f interface{}
 			err := json.Unmarshal(responseBytes, &f)
-
 			if err != nil {
 				log.Println(err)
 			}
+			parseUnknownJSON(f)
+
+			pinData := BoardsData{}
+			err = json.Unmarshal(responseBytes, &pinData)
+			if err != nil {
+				log.Println(err)
+			}
+			fmt.Println("pinData =", pinData)
 
 			fmt.Println("Parse response JSON")
-			print("f =",f)
-			print("&f =",&f)
-			parseUnknownJSON(f)
+			fmt.Println("f =",f)
+			fmt.Println("&f =",&f)
+			fmt.Println("*f =",*f)
+
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -95,7 +113,6 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseUnknownJSON(unknownInterface interface{}) {
-
 	unknMap := unknownInterface.(map[string]interface{})
 	for k, v := range unknMap {
 		switch t := v.(type) {
