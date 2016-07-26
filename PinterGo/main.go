@@ -40,9 +40,14 @@ var (
 	client *http.Client
 )
 
+const url_mi = "me/"
+const url_pins = "pins/"
+const url_boards = "boards/"
 const api_host_url = "https://api.pinterest.com/v1/"
-const api_url_pins = "me/pins/"
-const api_url_boards = "me/boards/"
+
+const api_url_pins = api_host_url + url_mi + url_pins
+
+const api_url_get_boards = api_host_url + url_mi + url_boards
 
 type Board struct {
 	ID   string `json:"id"`
@@ -54,8 +59,20 @@ type BoardsData struct {
 	Data []Board `json:"data"`
 }
 
-// boards
-func handleBoards(w http.ResponseWriter, r *http.Request) {
+func createURL(url_link string, params map[string]string) *url.URL {
+	u, err := url.Parse(url_link)
+	if err != nil {
+		log.Fatal(err)
+	}
+	q := u.Query()
+	for k, v := range params {
+		q.Add(k, v)
+	}
+	u.RawQuery = q.Encode()
+	fmt.Println(u)
+	fmt.Println("str = " + u.String())
+	return u
+	/*
 	u, err := url.Parse(api_host_url + api_url_boards)
 	if err != nil {
 		log.Fatal(err)
@@ -67,8 +84,14 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 	u.RawQuery = q.Encode()
 	fmt.Println(u)
 	fmt.Println("str = " + u.String())
+	*/
+}
 
-	resp, err := client.Get(u.String())
+// boards
+func handleBoards(w http.ResponseWriter, r *http.Request) {
+
+	url_link := createURL(api_url_get_boards, map[string]string{"access_token": tok.AccessToken, "fields": "id,name,url" })
+	resp, err := client.Get(url_link.String())
 	if err != nil {
 		log.Println(err)
 	}  else {
@@ -84,6 +107,10 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println(err)
 			}
+			fmt.Println("Parse response JSON")
+			fmt.Println("f =", f)
+			fmt.Println("&f =", &f)
+			//fmt.Println("*f =", *f) //invalid indirect of f (type interface {})
 			parseUnknownJSON(f)
 
 			pinData := BoardsData{}
@@ -93,10 +120,13 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Println("pinData =", pinData)
 
-			fmt.Println("Parse response JSON")
-			fmt.Println("f =",f)
-			fmt.Println("&f =",&f)
-			fmt.Println("*f =",*f)
+			for _, board := range pinData.Data {
+				boardId := board.ID
+				urlb := api_url_get_boards + boardId + url_pins
+				fmt.Println("urlboards =", urlb)
+				//url_link := createURL(, map[string]interface{}{"access_token":, "fields":  })
+
+			}
 
 		}
 
@@ -119,7 +149,7 @@ func parseUnknownJSON(unknownInterface interface{}) {
 		case string:
 			fmt.Println(k, "is string", "t = ", t, " v=", v)
 		case int:
-			fmt.Println(k, "is int", "t = " , t, " v=", v)
+			fmt.Println(k, "is int", "t = ", t, " v=", v)
 		case []interface{}:
 			fmt.Println(k, "is an array:")
 
