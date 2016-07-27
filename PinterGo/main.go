@@ -40,14 +40,15 @@ var (
 	client *http.Client
 )
 
-const url_mi = "me/"
-const url_pins = "pins/"
-const url_boards = "boards/"
-const api_host_url = "https://api.pinterest.com/v1/"
+const url_mi = "/me"
+const url_pins = "/pins"
+const url_boards = "/boards"
+const api_host_url = "https://api.pinterest.com/v1"
 
-const api_url_pins = api_host_url + url_mi + url_pins
+const api_url_get_pins = api_host_url + url_mi + url_pins
 
 const api_url_get_boards = api_host_url + url_mi + url_boards
+
 
 type Board struct {
 	ID   string `json:"id"`
@@ -65,6 +66,8 @@ func createURL(url_link string, params map[string]string) *url.URL {
 		log.Fatal(err)
 	}
 	q := u.Query()
+	fmt.Println("url_link = ", url_link)
+	fmt.Println(" +params = ", params)
 	for k, v := range params {
 		q.Add(k, v)
 	}
@@ -91,6 +94,7 @@ func createURL(url_link string, params map[string]string) *url.URL {
 func handleBoards(w http.ResponseWriter, r *http.Request) {
 
 	url_link := createURL(api_url_get_boards, map[string]string{"access_token": tok.AccessToken, "fields": "id,name,url" })
+
 	resp, err := client.Get(url_link.String())
 	if err != nil {
 		log.Println(err)
@@ -192,7 +196,7 @@ func handleReturn(w http.ResponseWriter, r *http.Request) {
 	//api_url+"/me/pins/?"+"access_token=<YOUR-ACCESS-TOKEN>
 	//&fields=id,creator,note
 	//&limit=1
-	u, err := url.Parse(api_host_url + api_url_pins)
+	u, err := url.Parse(api_url_get_pins)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -302,6 +306,7 @@ func main() {
 	http.HandleFunc("/returnPage", handleReturn)
 	http.HandleFunc("/boards", handleBoards)
 
+	//err := http.ListenAndServeTLS(":10443", serverCrt, serverKey, nil)
 	err := http.ListenAndServeTLS("localhost:443", serverCrt, serverKey, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
