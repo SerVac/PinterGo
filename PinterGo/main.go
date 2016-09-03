@@ -10,6 +10,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"path/filepath"
+	"./utils/cache"
 )
 
 const htmlIndex = `<html><body>
@@ -48,7 +51,31 @@ const api_host_url = "https://api.pinterest.com/v1"
 const api_url_get_pins = api_host_url + url_mi + url_pins
 
 const api_url_get_boards = api_host_url + url_mi + url_boards
+const api_url_get_board_fmt_pins = api_host_url + url_boards+"/%d"+url_pins
 
+type Image struct {
+	URL   string `json:"url"`
+}
+type Count struct {
+	name   string
+	num   int32
+}
+//map<string,i32>
+
+type PinEntity struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	URL  string `json:"url"`
+	LINK  string `json:"link"`
+	COLOR  string `json:"color"`
+	//COUNTS  Count `json:"counts"`
+	IMAGE Image `json:"image"`
+	//IMAGES []Image `json:"image"`
+}
+
+type PinsData struct {
+	Data []PinEntity `json:"data"`
+}
 
 type Board struct {
 	ID   string `json:"id"`
@@ -90,6 +117,17 @@ func createURL(url_link string, params map[string]string) *url.URL {
 	*/
 }
 
+func tokenCacheFilePath() (string, error) {
+	//usr, err := user.Current()
+	//if err != nil {
+	//	return "", err
+	//}
+	tokenCacheDir := filepath.Join(fPath, ".credentials")
+	os.MkdirAll(tokenCacheDir, 0700)
+	return filepath.Join(tokenCacheDir,
+		url.QueryEscape("drive-go-quickstart.json")), err
+}
+
 // boards
 func handleBoards(w http.ResponseWriter, r *http.Request) {
 
@@ -124,12 +162,55 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Println("pinData =", pinData)
 
+			pinsSlice := []string{}
 			for _, board := range pinData.Data {
-				boardId := board.ID
-				urlb := api_url_get_boards + boardId + url_pins
-				fmt.Println("urlboards =", urlb)
-				//url_link := createURL(, map[string]interface{}{"access_token":, "fields":  })
+				pinNumber, err := strconv.ParseInt(board.ID, 10, 64)
+				if err != nil {
+					fmt.Println(err)
+				}else {
+					pins_url := getPinsUrlForBoard(pinNumber)
+					pinsSlice = append(pinsSlice, pins_url)
+					//url_link := createURL(, map[string]interface{}{"access_token":, "fields":  })
+				}
+			}
 
+			// get boards pins
+			for _, pins_url := range pinsSlice {
+				fmt.Println("-----------\n")
+				fmt.Println("pins_url =", pins_url)
+				// &fields=id,creator,note
+				pins_url = createURL(pins_url, map[string]string{"fields": "id,name,url,color,counts,image" }).String()
+
+				resp, err := client.Get(pins_url)
+				if err != nil {
+					log.Println(err)
+				}  else {
+					pinsResponseBytes, err := ioutil.ReadAll(resp.Body)
+					if err != nil {
+						log.Println(err)
+					}else {
+						pinData := PinsData{}
+						fmt.Println("resp.Body =", resp.Body)
+						err = json.Unmarshal(pinsResponseBytes, &pinData)
+						if err != nil {
+							fmt.Println(err)
+						}else{
+							for _, entity := range pinData.Data {
+								fmt.Println("Pins url = ", entity.URL)
+								fmt.Println("Pins color = ", entity.COLOR)
+								fmt.Println("Pins counts = ", entity.COUNTS)
+								fmt.Println("Pins img = ", entity.IMAGE)
+								fmt.Println("Pins imges = ", entity.IMAGES)
+
+
+								for _, img := range entity.IMAGES {
+									fmt.Println(" img = ", img.URL)
+								}
+
+							}
+						}
+					}
+				}
 			}
 
 		}
@@ -144,6 +225,10 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+}
+
+func getPinsUrlForBoard(boardNumber int64) string{
+	return fmt.Sprintf(api_url_get_board_fmt_pins, boardNumber)
 }
 
 func parseUnknownJSON(unknownInterface interface{}) {
@@ -291,7 +376,10 @@ func main() {
 	//fmt.Println("Started running on http://127.0.0.1:8080")
 	//fmt.Println("Started running on https://localhost:8080")
 	//fmt.Println(http.ListenAndServe("localhost:8080", nil))
-	conf = &oauth2.Config{
+	//var t utils.CacheFile = utils.CacheFile{}
+
+	cache.PutInCache("test", "t")
+	/*conf = &oauth2.Config{
 		ClientID:     client_id,
 		ClientSecret: client_secret,
 		Scopes:       []string{"read_public", "write_public"},
@@ -311,6 +399,6 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 		os.Exit(1)
-	}
+	}*/
 
 }
