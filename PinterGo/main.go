@@ -378,7 +378,7 @@ func main() {
 	//fmt.Println(http.ListenAndServe("localhost:8080", nil))
 	//var t utils.CacheFile = utils.CacheFile{}
 
-	cache.PutInCache("test", "t")
+	var pool = cache.CachePool{"test", byte("234242")}
 	/*conf = &oauth2.Config{
 		ClientID:     client_id,
 		ClientSecret: client_secret,
