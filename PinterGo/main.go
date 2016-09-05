@@ -9,9 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"os"
 	"strconv"
-	"path/filepath"
 	"./utils/cache"
 )
 
@@ -117,16 +115,6 @@ func createURL(url_link string, params map[string]string) *url.URL {
 	*/
 }
 
-func tokenCacheFilePath() (string, error) {
-	//usr, err := user.Current()
-	//if err != nil {
-	//	return "", err
-	//}
-	tokenCacheDir := filepath.Join(fPath, ".credentials")
-	os.MkdirAll(tokenCacheDir, 0700)
-	return filepath.Join(tokenCacheDir,
-		url.QueryEscape("drive-go-quickstart.json")), err
-}
 
 // boards
 func handleBoards(w http.ResponseWriter, r *http.Request) {
@@ -198,14 +186,14 @@ func handleBoards(w http.ResponseWriter, r *http.Request) {
 							for _, entity := range pinData.Data {
 								fmt.Println("Pins url = ", entity.URL)
 								fmt.Println("Pins color = ", entity.COLOR)
-								fmt.Println("Pins counts = ", entity.COUNTS)
+								//fmt.Println("Pins counts = ", entity.COUNTS)
 								fmt.Println("Pins img = ", entity.IMAGE)
-								fmt.Println("Pins imges = ", entity.IMAGES)
+								//fmt.Println("Pins imges = ", entity.IMAGES)
 
 
-								for _, img := range entity.IMAGES {
-									fmt.Println(" img = ", img.URL)
-								}
+								//for _, img := range entity.IMAGES {
+								//	fmt.Println(" img = ", img.URL)
+								//}
 
 							}
 						}
@@ -378,7 +366,14 @@ func main() {
 	//fmt.Println(http.ListenAndServe("localhost:8080", nil))
 	//var t utils.CacheFile = utils.CacheFile{}
 
-	var pool = cache.CachePool{"test", byte("234242")}
+	//CachePool{path, make(map[string]*CacheFile)}
+
+	pool := cache.NewCachePool("/.test")
+	pool.Put("test_filename.txt", []byte("tetdt_12391291239"))
+
+
+
+
 	/*conf = &oauth2.Config{
 		ClientID:     client_id,
 		ClientSecret: client_secret,
