@@ -371,8 +371,11 @@ func main() {
 	pool := cache.NewCachePool("/.test")
 	pool.Put("test_filename.txt", []byte("tetdt_12391291239"))
 
+	pool.Get("test_filename.txt")
 
-
+	//dat, err := ioutil.ReadFile(f.Read(f.))
+	//check(err)
+	//fmt.Print(string(dat))
 
 	/*conf = &oauth2.Config{
 		ClientID:     client_id,
